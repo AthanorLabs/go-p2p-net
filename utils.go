@@ -80,7 +80,7 @@ func ReadStreamMessage(s io.Reader, maxMessageSize uint32) ([]byte, error) {
 	msgLen := binary.LittleEndian.Uint32(lenBuf)
 
 	if msgLen > maxMessageSize {
-		log.Warnf("Received message longer than max allowed size: msg size=%d, max=%d",
+		log.Warnf("received message longer than max allowed size: msg size=%d, max=%d",
 			msgLen, maxMessageSize)
 		return nil, fmt.Errorf("message size %d too large", msgLen)
 	}
