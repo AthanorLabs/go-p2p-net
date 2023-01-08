@@ -102,6 +102,12 @@ func (d *discovery) advertise(toAdvertise []string) time.Duration {
 		return tryAdvertiseTimeout
 	}
 
+	_, err = d.rd.Advertise(d.ctx, "")
+	if err != nil {
+		log.Debugf("failed to advertise in the DHT: err=%s", err)
+		return tryAdvertiseTimeout
+	}
+
 	for _, provides := range toAdvertise {
 		_, err = d.rd.Advertise(d.ctx, string(provides))
 		if err != nil {
@@ -168,7 +174,7 @@ func (d *discovery) findPeers(provides string, timeout time.Duration) ([]peer.ID
 				continue
 			}
 
-			log.Debugf("Found new peer via DHT: %s", peer)
+			log.Debugf("found new peer via DHT: %s", peer)
 			peerIDs = append(peerIDs, peer.ID)
 
 			// found a peer, try to connect if we need more peers
