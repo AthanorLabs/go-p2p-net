@@ -1,4 +1,4 @@
-package net
+package p2pnet
 
 import (
 	"context"

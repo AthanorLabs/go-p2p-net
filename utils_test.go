@@ -1,4 +1,4 @@
-package net
+package p2pnet
 
 import (
 	"bytes"
@@ -79,7 +79,7 @@ func Test_readStreamMessage_NilStream(t *testing.T) {
 func Test_writeStreamMessage(t *testing.T) {
 	msg := []byte("testmessage")
 	stream := &bytes.Buffer{}
-	err := writeStreamBytes(stream, msg)
+	err := WriteStreamBytes(stream, msg)
 	require.NoError(t, err)
 
 	serializedData := stream.Bytes()

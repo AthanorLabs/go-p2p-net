@@ -1,4 +1,4 @@
-package net
+package p2pnet
 
 import (
 	"context"
@@ -12,7 +12,7 @@ import (
 const testMaxMessageSize = 1 << 17
 
 func init() {
-	_ = logging.SetLogLevel("net", "debug")
+	_ = logging.SetLogLevel("p2pnet", "debug")
 }
 
 func basicTestConfig(t *testing.T) *Config {

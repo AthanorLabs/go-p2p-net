@@ -1,5 +1,5 @@
-// Package net implements p2p functionality for nodes using libp2p.
-package net
+// Package p2pnet implements p2p functionality for nodes using libp2p.
+package p2pnet
 
 import (
 	"context"
@@ -28,7 +28,7 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 )
 
-var log = logging.Logger("net")
+var log = logging.Logger("p2pnet")
 
 // Host represents a generic peer-to-peer node (ie. a host) that supports
 // discovery via DHT.

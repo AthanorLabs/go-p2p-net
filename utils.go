@@ -1,4 +1,4 @@
-package net
+package p2pnet
 
 import (
 	crand "crypto/rand"
@@ -33,7 +33,7 @@ func WriteStreamMessage(s io.Writer, msg Message, peerID peer.ID) error {
 		return err
 	}
 
-	err = writeStreamBytes(s, encMsg)
+	err = WriteStreamBytes(s, encMsg)
 	if err != nil {
 		return err
 	}
@@ -42,7 +42,8 @@ func WriteStreamMessage(s io.Writer, msg Message, peerID peer.ID) error {
 	return nil
 }
 
-func writeStreamBytes(s io.Writer, msg []byte) error {
+// WriteStreamBytes writes the given bytes to the stream.
+func WriteStreamBytes(s io.Writer, msg []byte) error {
 	err := binary.Write(s, binary.LittleEndian, uint32(len(msg)))
 	if err != nil {
 		return err
