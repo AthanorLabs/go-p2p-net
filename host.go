@@ -268,7 +268,7 @@ func (h *Host) Discover(provides string, searchTime time.Duration) ([]peer.ID, e
 // SetStreamHandler sets the stream handler for the given protocol ID.
 func (h *Host) SetStreamHandler(pid string, handler func(libp2pnetwork.Stream)) {
 	h.h.SetStreamHandler(protocol.ID(h.protocolID+pid), handler)
-	log.Debugf("supporting protocol %s", protocol.ID(pid))
+	log.Debugf("supporting protocol %s", protocol.ID(h.protocolID+pid))
 }
 
 // SetShouldAdvertiseFunc sets the function which is called before auto-advertising in
