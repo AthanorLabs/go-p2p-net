@@ -4,6 +4,7 @@ import (
 	"context"
 	"path"
 	"testing"
+	"time"
 
 	logging "github.com/ipfs/go-log"
 	"github.com/stretchr/testify/require"
@@ -39,15 +40,44 @@ func newHost(t *testing.T, cfg *Config) *Host {
 }
 
 func TestNewHost(t *testing.T) {
-	cfg := basicTestConfig(t)
-	h := newHost(t, cfg)
+	h := newHost(t, basicTestConfig(t))
 	err := h.Start()
+	require.NoError(t, err)
 
 	addresses := h.Addresses()
 	require.NotEmpty(t, addresses)
 	for _, addr := range h.Addresses() {
-		t.Logf(addr)
+		t.Log(addr)
 	}
+}
 
+func TestAdvertiseDiscover(t *testing.T) {
+	h1 := newHost(t, basicTestConfig(t))
+	err := h1.Start()
 	require.NoError(t, err)
+
+	h1Addresses := h1.Addresses()
+	require.NotEmpty(t, h1Addresses)
+
+	cfgH2 := basicTestConfig(t)
+	cfgH2.Bootnodes = []string{h1Addresses[0]}
+
+	h2 := newHost(t, cfgH2)
+	err = h2.Start()
+	require.NoError(t, err)
+
+	nameSpaces := []string{"one", "two", "three"}
+	h1.Advertise(nameSpaces)
+
+	// Advertise only puts the namespaces to advertise into a channel. It
+	// doesn't block until the advertisements are actually sent.
+	time.Sleep(500 * time.Millisecond)
+
+	allNamespaces := append(nameSpaces, "")
+	for _, ns := range allNamespaces {
+		peerIDs, err := h2.Discover(ns, time.Second*3)
+		require.NoError(t, err)
+		require.Len(t, peerIDs, 1)
+		require.Equal(t, h1.PeerID(), peerIDs[0])
+	}
 }
