@@ -109,7 +109,7 @@ func (d *discovery) advertise(toAdvertise []string) time.Duration {
 	}
 
 	for _, provides := range toAdvertise {
-		_, err = d.rd.Advertise(d.ctx, string(provides))
+		_, err = d.rd.Advertise(d.ctx, provides)
 		if err != nil {
 			log.Debugf("failed to advertise in the DHT: err=%s", err)
 			return tryAdvertiseTimeout
