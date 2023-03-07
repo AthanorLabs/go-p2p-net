@@ -284,6 +284,9 @@ func (h *Host) Connectedness(who peer.ID) libp2pnetwork.Connectedness {
 
 // Connect connects to the given peer.
 func (h *Host) Connect(ctx context.Context, who peer.AddrInfo) error {
+	if who.ID == h.PeerID() {
+		return errCannotConnectToSelf
+	}
 	return h.h.Connect(ctx, who)
 }
 

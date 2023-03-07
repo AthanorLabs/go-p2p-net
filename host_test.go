@@ -7,6 +7,7 @@ import (
 	"time"
 
 	logging "github.com/ipfs/go-log"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/stretchr/testify/require"
 )
 
@@ -80,4 +81,13 @@ func TestAdvertiseDiscover(t *testing.T) {
 		require.Len(t, peerIDs, 1)
 		require.Equal(t, h1.PeerID(), peerIDs[0])
 	}
+}
+
+func TestHost_ConnectToSelf(t *testing.T) {
+	h := newHost(t, basicTestConfig(t))
+	err := h.Start()
+	require.NoError(t, err)
+
+	err = h.Connect(context.Background(), peer.AddrInfo{ID: h.PeerID()})
+	require.ErrorIs(t, err, errCannotConnectToSelf)
 }
