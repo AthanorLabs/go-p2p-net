@@ -271,9 +271,6 @@ func (h *Host) SetStreamHandler(pid string, handler func(libp2pnetwork.Stream)) 
 // passed function should, at minimum, return the empty ("") namespace.
 func (h *Host) SetAdvertisedNamespacesFunc(fn func() []string) {
 	h.discovery.setAdvertisedNamespacesFunc(fn)
-	if fn != nil {
-		h.RefreshNamespaces()
-	}
 }
 
 // Connectedness returns the connectedness state of a given peer.
