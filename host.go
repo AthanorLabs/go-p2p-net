@@ -22,7 +22,6 @@ import (
 	"github.com/libp2p/go-libp2p/core/peerstore"
 	"github.com/libp2p/go-libp2p/core/protocol"
 	libp2pdiscovery "github.com/libp2p/go-libp2p/p2p/discovery/routing"
-	"github.com/libp2p/go-libp2p/p2p/host/autorelay"
 	"github.com/libp2p/go-libp2p/p2p/host/peerstore/pstoreds"
 	routedhost "github.com/libp2p/go-libp2p/p2p/host/routed"
 	ma "github.com/multiformats/go-multiaddr"
@@ -113,7 +112,7 @@ func NewHost(cfg *Config) (*Host, error) {
 	}
 
 	if len(bns) > 0 {
-		opts = append(opts, libp2p.EnableAutoRelay(autorelay.WithStaticRelays(bns)))
+		opts = append(opts, libp2p.EnableAutoRelayWithStaticRelays(bns))
 	}
 
 	// create libp2p host instance
@@ -157,7 +156,7 @@ func NewHost(cfg *Config) (*Host, error) {
 			dht:         dht,
 			h:           routedHost,
 			rd:          libp2pdiscovery.NewRoutingDiscovery(dht),
-			advertiseCh: make(chan []string),
+			advertiseCh: make(chan struct{}),
 		},
 	}
 
@@ -221,18 +220,14 @@ func (h *Host) Stop() error {
 	return nil
 }
 
-// Advertise advertises in the DHT.
-func (h *Host) Advertise(strs []string) {
-	h.discovery.advertiseCh <- strs
+// RefreshNamespaces advertises in the DHT.
+func (h *Host) RefreshNamespaces() {
+	h.discovery.advertiseCh <- struct{}{}
 }
 
 // Addresses returns the list of multiaddress the host is listening on.
-func (h *Host) Addresses() []string {
-	var addrs []string
-	for _, ma := range h.multiaddrs() {
-		addrs = append(addrs, ma.String())
-	}
-	return addrs
+func (h *Host) Addresses() []ma.Multiaddr {
+	return h.multiaddrs()
 }
 
 // PeerID returns the host's peer ID.
@@ -271,10 +266,13 @@ func (h *Host) SetStreamHandler(pid string, handler func(libp2pnetwork.Stream)) 
 	log.Debugf("supporting protocol %s", protocol.ID(h.protocolID+pid))
 }
 
-// SetShouldAdvertiseFunc sets the function which is called before auto-advertising in
-// the DHT. If it returns false, we don't advertise automatically.
-func (h *Host) SetShouldAdvertiseFunc(fn ShouldAdvertiseFunc) {
-	h.discovery.setShouldAdvertiseFunc(fn)
+// SetAdvertisedNamespacesFunc sets the function which is called to determine which
+// namespaces, other than the empty namespace, should be advertised in the DHT.
+func (h *Host) SetAdvertisedNamespacesFunc(fn advertisedNamespacesFunc) {
+	h.discovery.setAdvertisedNamespacesFunc(fn)
+	if fn != nil {
+		h.RefreshNamespaces()
+	}
 }
 
 // Connectedness returns the connectedness state of a given peer.

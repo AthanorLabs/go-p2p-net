@@ -21,22 +21,30 @@ const (
 	defaultMaxPeers     = 50 // TODO: make this configurable
 )
 
-// ShouldAdvertiseFunc is the type for a function that returns whether we should
-// regularly advertise inside the advertisement loop.
-// If it returns false, we don't advertise until the next loop iteration.
-type ShouldAdvertiseFunc = func() bool
+// advertisedNamespacesFunc is used to query the list of namespaces to be
+// advertised on every cycle of the advertisement loop. In most use cases, the
+// empty namespace ("") should always be included, and the returned list will
+// never be empty.
+type advertisedNamespacesFunc = func() []string
 
 type discovery struct {
-	ctx                 context.Context
-	dht                 *dual.DHT
-	h                   libp2phost.Host
-	rd                  *libp2prouting.RoutingDiscovery
-	advertiseCh         chan []string // signals to advertise
-	shouldAdvertiseFunc ShouldAdvertiseFunc
+	ctx                  context.Context
+	dht                  *dual.DHT
+	h                    libp2phost.Host
+	rd                   *libp2prouting.RoutingDiscovery
+	advertiseCh          chan struct{} // signals to advertise
+	advertisedNamespaces advertisedNamespacesFunc
 }
 
-func (d *discovery) setShouldAdvertiseFunc(fn ShouldAdvertiseFunc) {
-	d.shouldAdvertiseFunc = fn
+func (d *discovery) setAdvertisedNamespacesFunc(fn advertisedNamespacesFunc) {
+	d.advertisedNamespaces = fn
+}
+
+func (d *discovery) getAdvertisedNamespaces() []string {
+	if d.advertisedNamespaces == nil {
+		return []string{""}
+	}
+	return d.advertisedNamespaces()
 }
 
 func (d *discovery) start() error {
@@ -59,61 +67,41 @@ func (d *discovery) stop() error {
 }
 
 func (d *discovery) advertiseLoop() {
-	var toAdvertise []string
-	ttl := d.advertise(toAdvertise)
+	ttl := time.Duration(0) // don't block on first loop iteration
 
 	for {
 		select {
-		case ta := <-d.advertiseCh:
-			toAdvertise = ta
-			ttl = d.advertise(toAdvertise)
-		case <-time.After(ttl):
-			// the DHT clears provider records (ie. who is advertising what content)
-			// every 24 hours.
-			// so, if we don't have any offers available for 24 hours, then we are
-			// no longer present in the DHT as a provider.
-			// otherwise, we'll be present, but no offers will be sent when peers
-			// query us.
-			//
-			// this function is set in net/swapnet/host.go SetHandler().
-			if d.shouldAdvertiseFunc != nil && !d.shouldAdvertiseFunc() {
-				continue
-			}
-
-			ttl = d.advertise(toAdvertise)
 		case <-d.ctx.Done():
 			return
+		case <-d.advertiseCh:
+			// we've been asked to publish advertisements immediately, presumably
+			// because a new namespace was added
+		case <-time.After(ttl):
+			// publish advertisements on regular interval
 		}
+
+		// The DHT clears provider records (ie. who is advertising what content)
+		// every 24 hours. So, if we don't advertise a namespace for 24 hours,
+		// then we are no longer present in the DHT under that namespace.
+		ttl = d.advertise(d.getAdvertisedNamespaces())
 	}
 }
 
-// advertise advertises that we provide XMR in the DHT.
-// note: we only advertise that we are an XMR provider, but we don't
-// advertise our specific offers.
-// to find what our offers are, peers need to send us a QueryRequest
-// over the query subprotocol.
-// the return value is the amount of time the caller should wait before
-// trying to advertise again.
-func (d *discovery) advertise(toAdvertise []string) time.Duration {
-	log.Debug("advertising in the DHT...")
+// advertise advertises the passed set of namespaces in the DHT.
+func (d *discovery) advertise(namespaces []string) time.Duration {
 	err := d.dht.Bootstrap(d.ctx)
 	if err != nil {
-		log.Warnf("failed to bootstrap DHT: err=%s", err)
+		log.Warnf("failed to bootstrap DHT: %s", err)
 		return tryAdvertiseTimeout
 	}
 
-	_, err = d.rd.Advertise(d.ctx, "")
-	if err != nil {
-		log.Debugf("failed to advertise in the DHT: err=%s", err)
-		return tryAdvertiseTimeout
-	}
-
-	for _, provides := range toAdvertise {
+	for _, provides := range namespaces {
 		_, err = d.rd.Advertise(d.ctx, provides)
 		if err != nil {
-			log.Debugf("failed to advertise in the DHT: err=%s", err)
+			log.Debugf("failed to advertise %q in the DHT: %s", provides, err)
 			return tryAdvertiseTimeout
 		}
+		log.Debugf("advertised %q in the DHT", provides)
 	}
 
 	return defaultAdvertiseTTL
@@ -165,26 +153,26 @@ func (d *discovery) findPeers(provides string, timeout time.Duration) ([]peer.ID
 				return peerIDs, nil
 			}
 			return peerIDs, ctx.Err()
-		case peer, ok := <-peerCh:
+		case peerAddr, ok := <-peerCh:
 			if !ok {
 				// channel was closed, no more peers to read
 				return peerIDs, nil
 			}
-			if peer.ID == ourPeerID {
+			if peerAddr.ID == ourPeerID {
 				continue
 			}
 
-			log.Debugf("found new peer via DHT: %s", peer)
-			peerIDs = append(peerIDs, peer.ID)
+			log.Debugf("found new peer via DHT: %s", peerAddr)
+			peerIDs = append(peerIDs, peerAddr.ID)
 
 			// found a peer, try to connect if we need more peers
 			if len(d.h.Network().Peers()) < defaultMaxPeers {
-				err = d.h.Connect(d.ctx, peer)
+				err = d.h.Connect(d.ctx, peerAddr)
 				if err != nil {
-					log.Debugf("failed to connect to discovered peer %s: %s", peer.ID, err)
+					log.Debugf("failed to connect to discovered peer %s: %s", peerAddr.ID, err)
 				}
 			} else {
-				d.h.Peerstore().AddAddrs(peer.ID, peer.Addrs, peerstore.PermanentAddrTTL)
+				d.h.Peerstore().AddAddrs(peerAddr.ID, peerAddr.Addrs, peerstore.PermanentAddrTTL)
 			}
 		}
 	}
