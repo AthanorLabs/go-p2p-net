@@ -21,22 +21,20 @@ const (
 	defaultMaxPeers     = 50 // TODO: make this configurable
 )
 
-// advertisedNamespacesFunc is used to query the list of namespaces to be
-// advertised on every cycle of the advertisement loop. In most use cases, the
-// empty namespace ("") should always be included, and the returned list will
-// never be empty.
-type advertisedNamespacesFunc = func() []string
-
 type discovery struct {
 	ctx                  context.Context
 	dht                  *dual.DHT
 	h                    libp2phost.Host
 	rd                   *libp2prouting.RoutingDiscovery
 	advertiseCh          chan struct{} // signals to advertise
-	advertisedNamespaces advertisedNamespacesFunc
+	advertisedNamespaces func() []string
 }
 
-func (d *discovery) setAdvertisedNamespacesFunc(fn advertisedNamespacesFunc) {
+// setAdvertisedNamespacesFunc sets the function used to query the list of
+// namespaces to be advertised on every cycle of the advertisement loop. In most
+// use cases, this function should always return the empty namespace ("") on top
+// of any additional namespaces that should be advertised.
+func (d *discovery) setAdvertisedNamespacesFunc(fn func() []string) {
 	d.advertisedNamespaces = fn
 }
 

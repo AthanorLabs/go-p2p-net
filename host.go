@@ -266,9 +266,10 @@ func (h *Host) SetStreamHandler(pid string, handler func(libp2pnetwork.Stream)) 
 	log.Debugf("supporting protocol %s", protocol.ID(h.protocolID+pid))
 }
 
-// SetAdvertisedNamespacesFunc sets the function which is called to determine which
-// namespaces, other than the empty namespace, should be advertised in the DHT.
-func (h *Host) SetAdvertisedNamespacesFunc(fn advertisedNamespacesFunc) {
+// SetAdvertisedNamespacesFunc sets the function that is called to determine
+// which namespaces should be advertised in the DHT. In most use cases, the
+// passed function should, at minimum, return the empty ("") namespace.
+func (h *Host) SetAdvertisedNamespacesFunc(fn func() []string) {
 	h.discovery.setAdvertisedNamespacesFunc(fn)
 	if fn != nil {
 		h.RefreshNamespaces()
@@ -313,7 +314,7 @@ func (h *Host) bootstrap() error {
 
 	selfID := h.PeerID()
 
-	var failed uint64 = 0
+	failed := uint64(0)
 	var wg sync.WaitGroup
 	for _, bn := range h.bootnodes {
 		if bn.ID == selfID {

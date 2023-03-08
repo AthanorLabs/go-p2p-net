@@ -133,7 +133,7 @@ func generateKey(seed int64, fp string) (crypto.PrivKey, error) {
 	if seed == 0 {
 		r = crand.Reader
 	} else {
-		r = mrand.New(mrand.NewSource(seed)) //nolint
+		r = mrand.New(mrand.NewSource(seed))
 	}
 	key, _, err := crypto.GenerateEd25519Key(r)
 	if err != nil {
