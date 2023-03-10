@@ -38,7 +38,7 @@ func WriteStreamMessage(s io.Writer, msg Message, peerID peer.ID) error {
 		return err
 	}
 
-	log.Debugf("Sent message to peer=%s type=%s", peerID, msg.Type())
+	log.Debugf("Sent message to peer=%s type=%d", peerID, msg.Type())
 	return nil
 }
 
