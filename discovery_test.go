@@ -13,9 +13,11 @@ func TestHost_Discover(t *testing.T) {
 	ha := newHost(t, basicTestConfig(t))
 	err := ha.Start()
 	require.NoError(t, err)
+
 	hb := newHost(t, basicTestConfig(t))
 	err = hb.Start()
 	require.NoError(t, err)
+
 	hc := newHost(t, basicTestConfig(t))
 	err = hc.Start()
 	require.NoError(t, err)

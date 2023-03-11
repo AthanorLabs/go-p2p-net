@@ -169,8 +169,6 @@ func (h *Host) Start() error {
 		log.Info("started listening: address=", addr)
 	}
 
-	// ignore error - node should still be able to run without connecting to
-	// bootstrap nodes (for now)
 	if err := h.bootstrap(); err != nil {
 		return err
 	}
