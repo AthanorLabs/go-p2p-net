@@ -218,8 +218,8 @@ func (h *Host) Stop() error {
 	return nil
 }
 
-// RefreshNamespaces advertises in the DHT.
-func (h *Host) RefreshNamespaces() {
+// Advertise advertises in the DHT.
+func (h *Host) Advertise() {
 	h.discovery.advertiseCh <- struct{}{}
 }
 

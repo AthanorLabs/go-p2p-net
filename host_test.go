@@ -73,7 +73,7 @@ func TestAdvertiseDiscover(t *testing.T) {
 	}
 	h1.SetAdvertisedNamespacesFunc(advertisedNamespaces)
 
-	// RefreshNamespaces only puts the namespaces to advertise into a channel. It
+	// Advertise only puts the namespaces to advertise into a channel. It
 	// doesn't block until the advertisements are actually sent.
 	time.Sleep(500 * time.Millisecond)
 
