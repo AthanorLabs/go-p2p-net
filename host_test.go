@@ -61,21 +61,23 @@ func TestAdvertiseDiscover(t *testing.T) {
 	require.NotEmpty(t, h1Addresses)
 
 	cfgH2 := basicTestConfig(t)
-	cfgH2.Bootnodes = []string{h1Addresses[0]}
+	cfgH2.Bootnodes = []string{h1Addresses[0].String()}
 
 	h2 := newHost(t, cfgH2)
 	err = h2.Start()
 	require.NoError(t, err)
 
-	nameSpaces := []string{"one", "two", "three"}
-	h1.Advertise(nameSpaces)
+	nameSpaces := []string{"", "one", "two", "three"}
+	advertisedNamespaces := func() []string {
+		return nameSpaces
+	}
+	h1.SetAdvertisedNamespacesFunc(advertisedNamespaces)
 
 	// Advertise only puts the namespaces to advertise into a channel. It
 	// doesn't block until the advertisements are actually sent.
 	time.Sleep(500 * time.Millisecond)
 
-	allNamespaces := append(nameSpaces, "")
-	for _, ns := range allNamespaces {
+	for _, ns := range nameSpaces {
 		peerIDs, err := h2.Discover(ns, time.Second*3)
 		require.NoError(t, err)
 		require.Len(t, peerIDs, 1)
