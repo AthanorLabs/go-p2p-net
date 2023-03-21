@@ -51,6 +51,11 @@ type Config struct {
 	Bootnodes  []string
 	ProtocolID string
 	ListenIP   string
+
+	// AdvertisedNamespacesFunc is called to determine which namespaces should
+	// be advertised in the DHT. In most use cases, the passed function should,
+	// at minimum, return the empty ("") namespace.
+	AdvertisedNamespacesFunc func() []string
 }
 
 // QUIC will have better performance in high-bandwidth protocols if you increase a socket
@@ -152,11 +157,12 @@ func NewHost(cfg *Config) (*Host, error) {
 		ds:         ds,
 		bootnodes:  bns,
 		discovery: &discovery{
-			ctx:         ourCtx,
-			dht:         dht,
-			h:           routedHost,
-			rd:          libp2pdiscovery.NewRoutingDiscovery(dht),
-			advertiseCh: make(chan struct{}),
+			ctx:                  ourCtx,
+			dht:                  dht,
+			h:                    routedHost,
+			rd:                   libp2pdiscovery.NewRoutingDiscovery(dht),
+			advertiseCh:          make(chan struct{}),
+			advertisedNamespaces: cfg.AdvertisedNamespacesFunc,
 		},
 	}
 
@@ -262,13 +268,6 @@ func (h *Host) Discover(provides string, searchTime time.Duration) ([]peer.ID, e
 func (h *Host) SetStreamHandler(pid string, handler func(libp2pnetwork.Stream)) {
 	h.h.SetStreamHandler(protocol.ID(h.protocolID+pid), handler)
 	log.Debugf("supporting protocol %s", protocol.ID(h.protocolID+pid))
-}
-
-// SetAdvertisedNamespacesFunc sets the function that is called to determine
-// which namespaces should be advertised in the DHT. In most use cases, the
-// passed function should, at minimum, return the empty ("") namespace.
-func (h *Host) SetAdvertisedNamespacesFunc(fn func() []string) {
-	h.discovery.setAdvertisedNamespacesFunc(fn)
 }
 
 // Connectedness returns the connectedness state of a given peer.

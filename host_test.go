@@ -17,7 +17,7 @@ func init() {
 	_ = logging.SetLogLevel("p2pnet", "debug")
 }
 
-func basicTestConfig(t *testing.T) *Config {
+func basicTestConfig(t *testing.T, namespaces []string) *Config {
 	// t.TempDir() is unique on every call. Don't reuse this config with multiple hosts.
 	tmpDir := t.TempDir()
 	return &Config{
@@ -27,6 +27,9 @@ func basicTestConfig(t *testing.T) *Config {
 		KeyFile:   path.Join(tmpDir, "node.key"),
 		Bootnodes: nil,
 		ListenIP:  "127.0.0.1",
+		AdvertisedNamespacesFunc: func() []string {
+			return namespaces
+		},
 	}
 }
 
@@ -41,7 +44,7 @@ func newHost(t *testing.T, cfg *Config) *Host {
 }
 
 func TestNewHost(t *testing.T) {
-	h := newHost(t, basicTestConfig(t))
+	h := newHost(t, basicTestConfig(t, []string{""}))
 	err := h.Start()
 	require.NoError(t, err)
 
@@ -53,40 +56,37 @@ func TestNewHost(t *testing.T) {
 }
 
 func TestAdvertiseDiscover(t *testing.T) {
-	h1 := newHost(t, basicTestConfig(t))
+	nameSpaces := []string{"", "one", "two", "three"}
+
+	h1 := newHost(t, basicTestConfig(t, nameSpaces))
 	err := h1.Start()
 	require.NoError(t, err)
 
 	h1Addresses := h1.Addresses()
 	require.NotEmpty(t, h1Addresses)
 
-	cfgH2 := basicTestConfig(t)
+	cfgH2 := basicTestConfig(t, nameSpaces)
 	cfgH2.Bootnodes = []string{h1Addresses[0].String()}
 
 	h2 := newHost(t, cfgH2)
 	err = h2.Start()
 	require.NoError(t, err)
 
-	nameSpaces := []string{"", "one", "two", "three"}
-	advertisedNamespaces := func() []string {
-		return nameSpaces
-	}
-	h1.SetAdvertisedNamespacesFunc(advertisedNamespaces)
-
-	// Advertise only puts the namespaces to advertise into a channel. It
-	// doesn't block until the advertisements are actually sent.
-	time.Sleep(500 * time.Millisecond)
+	// h1's first advertisement attempt failed, as h2 was not yet online to
+	// form a DHT with. Run h1's advertisement loop now instead of waiting.
+	h1.Advertise()
+	time.Sleep(testAdvertPropagationDelay)
 
 	for _, ns := range nameSpaces {
 		peerIDs, err := h2.Discover(ns, time.Second*3)
-		require.NoError(t, err)
-		require.Len(t, peerIDs, 1)
-		require.Equal(t, h1.PeerID(), peerIDs[0])
+		require.NoError(t, err, "namespace=%q", ns)
+		require.Len(t, peerIDs, 1, "namespace=%q", ns)
+		require.Equal(t, h1.PeerID(), peerIDs[0], "namespace=%q", ns)
 	}
 }
 
 func TestHost_ConnectToSelf(t *testing.T) {
-	h := newHost(t, basicTestConfig(t))
+	h := newHost(t, basicTestConfig(t, nil))
 	err := h.Start()
 	require.NoError(t, err)
 
