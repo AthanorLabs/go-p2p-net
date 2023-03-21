@@ -7,18 +7,20 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var testAdvertisementSleepDuration = time.Millisecond * 100
+var testAdvertPropagationDelay = time.Millisecond * 100
 
 func TestHost_Discover(t *testing.T) {
-	ha := newHost(t, basicTestConfig(t))
+	namespaces := []string{"", "test"}
+
+	ha := newHost(t, basicTestConfig(t, namespaces))
 	err := ha.Start()
 	require.NoError(t, err)
 
-	hb := newHost(t, basicTestConfig(t))
+	hb := newHost(t, basicTestConfig(t, namespaces))
 	err = hb.Start()
 	require.NoError(t, err)
 
-	hc := newHost(t, basicTestConfig(t))
+	hc := newHost(t, basicTestConfig(t, namespaces))
 	err = hc.Start()
 	require.NoError(t, err)
 
@@ -29,17 +31,15 @@ func TestHost_Discover(t *testing.T) {
 	err = hc.h.Connect(hc.ctx, hb.AddrInfo())
 	require.NoError(t, err)
 
-	require.GreaterOrEqual(t, len(ha.h.Network().Peers()), 1)
-	require.GreaterOrEqual(t, len(hb.h.Network().Peers()), 2)
-	require.GreaterOrEqual(t, len(hc.h.Network().Peers()), 1)
+	// now that the nodes can form a DHT, advertise
+	ha.Advertise()
+	hb.Advertise()
+	hc.Addresses()
+	time.Sleep(testAdvertPropagationDelay)
 
-	providedNamesapces := func() []string {
-		return []string{"test"}
-	}
-	ha.SetAdvertisedNamespacesFunc(providedNamesapces)
-	hb.SetAdvertisedNamespacesFunc(providedNamesapces)
-	hc.SetAdvertisedNamespacesFunc(providedNamesapces)
-	time.Sleep(testAdvertisementSleepDuration)
+	require.GreaterOrEqual(t, len(ha.h.Network().Peers()), 2)
+	require.GreaterOrEqual(t, len(hb.h.Network().Peers()), 2)
+	require.GreaterOrEqual(t, len(hc.h.Network().Peers()), 2)
 
 	peerIDs, err := hc.Discover("test", time.Second)
 	require.NoError(t, err)
