@@ -30,14 +30,6 @@ type discovery struct {
 	advertisedNamespaces func() []string
 }
 
-// setAdvertisedNamespacesFunc sets the function used to query the list of
-// namespaces to be advertised on every cycle of the advertisement loop. In most
-// use cases, this function should always return the empty namespace ("") on top
-// of any additional namespaces that should be advertised.
-func (d *discovery) setAdvertisedNamespacesFunc(fn func() []string) {
-	d.advertisedNamespaces = fn
-}
-
 func (d *discovery) getAdvertisedNamespaces() []string {
 	if d.advertisedNamespaces == nil {
 		return []string{""}
@@ -96,7 +88,7 @@ func (d *discovery) advertise(namespaces []string) time.Duration {
 	for _, provides := range namespaces {
 		_, err = d.rd.Advertise(d.ctx, provides)
 		if err != nil {
-			log.Debugf("failed to advertise %q in the DHT: %s", provides, err)
+			log.Debugf("did not advertise %q in the DHT: %s", provides, err)
 			return tryAdvertiseTimeout
 		}
 		log.Debugf("advertised %q in the DHT", provides)

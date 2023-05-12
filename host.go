@@ -74,8 +74,8 @@ func NewHost(cfg *Config) (*Host, error) {
 
 	key, err := loadKey(cfg.KeyFile)
 	if err != nil {
-		log.Debugf("failed to load libp2p key, generating key %s...", cfg.KeyFile)
-		key, err = generateKey(0, cfg.KeyFile)
+		log.Debugf("libp2p key not found, generating key %s", cfg.KeyFile)
+		key, err = generateKey(cfg.KeyFile)
 		if err != nil {
 			return nil, err
 		}

@@ -4,18 +4,24 @@ import (
 	"bytes"
 	"encoding/binary"
 	"io"
+	"path"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
 
 func TestGenerateAndSaveKey(t *testing.T) {
-	tempDir := t.TempDir()
-	_, err := generateKey(1234, tempDir)
+	filePath := path.Join(t.TempDir(), "net.key")
+	key1, err := generateKey(filePath)
 	require.NoError(t, err)
 
-	_, err = generateKey(1234, tempDir)
-	require.NoError(t, err)
+	// verify that we can't accidentally overwrite an existing key
+	_, err = generateKey(filePath)
+	require.ErrorContains(t, err, "file exists")
+
+	// create a key under a new path and ensure that it is different
+	key2, err := generateKey(path.Join(t.TempDir(), "net.key"))
+	require.False(t, key1.Equals(key2))
 }
 
 func Test_stringsToAddrInfos(t *testing.T) {

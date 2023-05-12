@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	mrand "math/rand"
 	"net"
 	"os"
 	"path/filepath"
@@ -125,25 +124,18 @@ func stringsToAddrInfos(peers []string) ([]peer.AddrInfo, error) {
 	return peer.AddrInfosFromP2pAddrs(madders...)
 }
 
-// generateKey generates an ed25519 private key and writes it to the data directory
-// If the seed is zero, we use real cryptographic randomness. Otherwise, we use a
-// deterministic randomness source to make keys the same across multiple runs.
-func generateKey(seed int64, fp string) (crypto.PrivKey, error) {
-	var r io.Reader
-	if seed == 0 {
-		r = crand.Reader
-	} else {
-		r = mrand.New(mrand.NewSource(seed))
-	}
-	key, _, err := crypto.GenerateEd25519Key(r)
+// generateKey generates an ed25519 private key and writes it to the past
+// filepath.
+func generateKey(fp string) (crypto.PrivKey, error) {
+	key, _, err := crypto.GenerateEd25519Key(crand.Reader)
 	if err != nil {
 		return nil, err
 	}
-	if seed == 0 {
-		if err = saveKey(key, fp); err != nil {
-			return nil, err
-		}
+
+	if err = saveKey(key, fp); err != nil {
+		return nil, err
 	}
+
 	return key, nil
 }
 
@@ -163,18 +155,20 @@ func loadKey(fp string) (crypto.PrivKey, error) {
 
 // saveKey attempts to save a private key to the provided filepath
 func saveKey(priv crypto.PrivKey, fp string) (err error) {
-	f, err := os.Create(filepath.Clean(fp))
+	f, err := os.OpenFile(filepath.Clean(fp), os.O_RDWR|os.O_CREATE|os.O_EXCL, 0600)
 	if err != nil {
 		return err
 	}
+
 	raw, err := priv.Raw()
 	if err != nil {
 		return err
 	}
-	enc := make([]byte, hex.EncodedLen(len(raw)))
-	hex.Encode(enc, raw)
-	if _, err = f.Write(enc); err != nil {
+
+	hexBytes := []byte(hex.EncodeToString(raw))
+	if _, err = f.Write(hexBytes); err != nil {
 		return err
 	}
+
 	return f.Close()
 }
