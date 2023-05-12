@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fortytw2/leaktest"
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/stretchr/testify/require"
@@ -20,8 +21,12 @@ func init() {
 func basicTestConfig(t *testing.T, namespaces []string) *Config {
 	// t.TempDir() is unique on every call. Don't reuse this config with multiple hosts.
 	tmpDir := t.TempDir()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
+
 	return &Config{
-		Ctx:       context.Background(),
+		Ctx:       ctx,
 		DataDir:   tmpDir,
 		Port:      0, // OS randomized libp2p port
 		KeyFile:   path.Join(tmpDir, "node.key"),
@@ -44,6 +49,7 @@ func newHost(t *testing.T, cfg *Config) *Host {
 }
 
 func TestNewHost(t *testing.T) {
+	t.Cleanup(leaktest.Check(t))
 	h := newHost(t, basicTestConfig(t, []string{""}))
 	err := h.Start()
 	require.NoError(t, err)

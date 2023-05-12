@@ -3,6 +3,7 @@ module github.com/athanorlabs/go-p2p-net
 go 1.20
 
 require (
+	github.com/fortytw2/leaktest v1.3.0
 	github.com/ipfs/go-ds-badger2 v0.1.3
 	github.com/ipfs/go-log v1.0.5
 	github.com/libp2p/go-libp2p v0.27.3
