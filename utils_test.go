@@ -21,6 +21,7 @@ func TestGenerateAndSaveKey(t *testing.T) {
 
 	// create a key under a new path and ensure that it is different
 	key2, err := generateKey(path.Join(t.TempDir(), "net.key"))
+	require.NoError(t, err)
 	require.False(t, key1.Equals(key2))
 }
 
