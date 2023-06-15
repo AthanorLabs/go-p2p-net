@@ -289,10 +289,6 @@ func (h *Host) NewStream(ctx context.Context, p peer.ID, pid protocol.ID) (libp2
 	return h.h.NewStream(ctx, p, protocol.ID(h.protocolID)+pid)
 }
 
-func (h *Host) ProtocolID() string {
-	return h.protocolID
-}
-
 // multiaddrs returns the local multiaddresses that we are listening on
 func (h *Host) multiaddrs() []ma.Multiaddr {
 	addr := h.AddrInfo()
