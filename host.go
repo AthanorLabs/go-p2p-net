@@ -12,7 +12,7 @@ import (
 	"time"
 
 	badger "github.com/ipfs/go-ds-badger2"
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p"
 	kaddht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-kad-dht/dual"
@@ -158,6 +158,7 @@ func NewHost(cfg *Config) (*Host, error) {
 		bootnodes:  bns,
 		discovery: &discovery{
 			ctx:                  ourCtx,
+			namespacePrefix:      cfg.ProtocolID,
 			dht:                  dht,
 			h:                    routedHost,
 			rd:                   libp2pdiscovery.NewRoutingDiscovery(dht),
@@ -286,6 +287,10 @@ func (h *Host) Connect(ctx context.Context, who peer.AddrInfo) error {
 // NewStream opens a stream with the given peer on the given protocol ID.
 func (h *Host) NewStream(ctx context.Context, p peer.ID, pid protocol.ID) (libp2pnetwork.Stream, error) {
 	return h.h.NewStream(ctx, p, protocol.ID(h.protocolID)+pid)
+}
+
+func (h *Host) ProtocolID() string {
+	return h.protocolID
 }
 
 // multiaddrs returns the local multiaddresses that we are listening on
