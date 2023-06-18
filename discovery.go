@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"path"
 	"time"
 
 	"github.com/libp2p/go-libp2p-kad-dht/dual"
@@ -27,6 +28,7 @@ type discovery struct {
 	h                    libp2phost.Host
 	rd                   *libp2prouting.RoutingDiscovery
 	advertiseCh          chan struct{} // signals to advertise
+	namespacePrefix      string        // Prefix to append before all advertised namespaces
 	advertisedNamespaces func() []string
 }
 
@@ -86,7 +88,7 @@ func (d *discovery) advertise(namespaces []string) time.Duration {
 	}
 
 	for _, provides := range namespaces {
-		_, err = d.rd.Advertise(d.ctx, provides)
+		_, err = d.rd.Advertise(d.ctx, path.Join(d.namespacePrefix, provides))
 		if err != nil {
 			log.Debugf("did not advertise %q in the DHT: %s", provides, err)
 			return tryAdvertiseTimeout
@@ -123,7 +125,7 @@ func (d *discovery) discoverLoop() {
 func (d *discovery) findPeers(provides string, timeout time.Duration) ([]peer.ID, error) {
 	peerCh, err := d.rd.FindPeers(
 		d.ctx,
-		provides,
+		path.Join(d.namespacePrefix, provides),
 		libp2pdiscovery.Limit(defaultMaxPeers),
 	)
 	if err != nil {
