@@ -6,12 +6,10 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"path"
 	"sync"
 	"sync/atomic"
 	"time"
 
-	badger "github.com/ipfs/go-ds-badger2"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p"
 	kaddht "github.com/libp2p/go-libp2p-kad-dht"
@@ -21,8 +19,8 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/peerstore"
 	"github.com/libp2p/go-libp2p/core/protocol"
+	"github.com/libp2p/go-libp2p/core/routing"
 	libp2pdiscovery "github.com/libp2p/go-libp2p/p2p/discovery/routing"
-	"github.com/libp2p/go-libp2p/p2p/host/peerstore/pstoreds"
 	routedhost "github.com/libp2p/go-libp2p/p2p/host/routed"
 	ma "github.com/multiformats/go-multiaddr"
 )
@@ -39,7 +37,6 @@ type Host struct {
 	h         libp2phost.Host
 	bootnodes []peer.AddrInfo
 	discovery *discovery
-	ds        *badger.Datastore
 }
 
 // Config is used to configure the network Host.
@@ -86,16 +83,6 @@ func NewHost(cfg *Config) (*Host, error) {
 		return nil, errInvalidListenIP
 	}
 
-	ds, err := badger.NewDatastore(path.Join(cfg.DataDir, "libp2p-datastore"), &badger.DefaultOptions)
-	if err != nil {
-		return nil, err
-	}
-
-	ps, err := pstoreds.NewPeerstore(cfg.Ctx, ds, pstoreds.DefaultOpts())
-	if err != nil {
-		return nil, err
-	}
-
 	// set libp2p host options
 	opts := []libp2p.Option{
 		libp2p.ListenAddrStrings(
@@ -107,7 +94,10 @@ func NewHost(cfg *Config) (*Host, error) {
 		libp2p.EnableRelayService(),
 		libp2p.EnableNATService(),
 		libp2p.EnableHolePunching(),
-		libp2p.Peerstore(ps),
+		// Let this host use the DHT to find other hosts
+		libp2p.Routing(func(h libp2phost.Host) (routing.PeerRouting, error) {
+			return kaddht.New(cfg.Ctx, h)
+		}),
 	}
 
 	// format bootnodes
@@ -154,7 +144,6 @@ func NewHost(cfg *Config) (*Host, error) {
 		cancel:     cancel,
 		protocolID: cfg.ProtocolID,
 		h:          routedHost,
-		ds:         ds,
 		bootnodes:  bns,
 		discovery: &discovery{
 			ctx:                  ourCtx,
@@ -215,11 +204,6 @@ func (h *Host) Stop() error {
 	err := h.h.Peerstore().Close()
 	if err != nil {
 		return fmt.Errorf("failed to close peerstore: %w", err)
-	}
-
-	err = h.ds.Close()
-	if err != nil {
-		return fmt.Errorf("failed to close libp2p datastore: %w", err)
 	}
 
 	return nil
